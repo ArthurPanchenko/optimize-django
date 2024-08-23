@@ -1,7 +1,9 @@
+from typing import Iterable
 from django.db import models
 from django.core.validators import MaxValueValidator
 
 from clients.models import Client
+from .tasks import set_price
 
 
 class Service(models.Model):
@@ -11,6 +13,17 @@ class Service(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.__full_price = self.full_price
+
+    def save(self, *args, **kwargs):
+        
+        if self.full_price != self.__full_price:
+            for service in self.subscription.all():
+                set_price.delay(service.id)
+        
+        return super().save(*args, **kwargs)
 
 class Plan(models.Model):
     PLAN_TYPES = (
@@ -25,8 +38,20 @@ class Plan(models.Model):
         validators=[MaxValueValidator(100)]
     )
 
+    def __init__(self, *a, **kw):
+        super().__init__(*a, **kw)
+        self.__discount_percent = self.discount_percent
+
     def __str__(self):
         return f'{self.plan_type}: {self.discount_percent}%'
+    
+    def save(self, *args, **kwargs):
+        
+        if self.discount_percent != self.__discount_percent:
+            for sub in self.subscription.all():
+                set_price.delay(sub.id)
+        
+        return super().save(*args, **kwargs)
 
 
 class Subscription(models.Model):
@@ -46,5 +71,8 @@ class Subscription(models.Model):
         on_delete=models.PROTECT
     )
 
+    price = models.PositiveIntegerField()
+
     def __str__(self):
         return f'{self.client}, {self.service}, {self.plan}'
+    
