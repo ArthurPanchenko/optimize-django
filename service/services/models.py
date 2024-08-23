@@ -72,6 +72,7 @@ class Subscription(models.Model):
     )
 
     price = models.PositiveIntegerField()
+    comment = models.CharField(max_length=50)
 
     def __str__(self):
         return f'{self.client}, {self.service}, {self.plan}'
