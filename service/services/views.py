@@ -1,4 +1,5 @@
 from django.db.models import Prefetch, F, Sum
+from django.core.cache import cache
 
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
@@ -23,10 +24,18 @@ class SubscriptionView(ReadOnlyModelViewSet):
         qs = self.filter_queryset(self.get_queryset())
         response = super().list(request, *args, **kwargs)
 
+        price_cache = cache.get('price_cache')
+
+        if price_cache:
+            total_price = price_cache
+        else:
+            total_price = qs.aggregate(
+                total=Sum('price')
+            ).get('total')
+            cache.set('price_cache', total_price, 10)
+
         response_data = {'result': response.data}
-        response_data['total_amount'] = qs.aggregate(
-            total=Sum('price')
-        ).get('total')
+        response_data['total_amount'] = total_price
         response.data = response_data
 
         return response
