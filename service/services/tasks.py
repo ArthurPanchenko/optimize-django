@@ -1,6 +1,8 @@
 import time
 
 from django.db.models import F
+from django.core.cache import cache
+
 from celery import shared_task
 from celery_singleton import Singleton
 
@@ -19,4 +21,4 @@ def set_price(subscription_id):
 
     sub.price = sub.annotated_price
     sub.save()
-
+    cache.delete('price_cache')

@@ -77,3 +77,9 @@ class Subscription(models.Model):
     def __str__(self):
         return f'{self.client}, {self.service}, {self.plan}'
     
+    def save(self, *args, **kwargs):
+        created = bool(self.id)
+        result = super().save(*args, *kwargs)
+        if created:
+            set_price.delay(self.id)
+        return result
